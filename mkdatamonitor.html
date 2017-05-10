@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+	<title>IEX Market Monitoring</title>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<link rel="stylesheet" href="http://epochjs.github.io/epoch/css/epoch.css">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+	<style>body { padding: 0px 10px; font-family: 'Tangerine', serif }
+	       table { font-size: smaller }
+	       th, td { border-bottom: 1px solid #ddd; padding: 5px; horizontal-align: right; vertical-align: bottom }
+	       #areaChartVol .trf .area { fill: #666; }
+	       #areaChartVol .nsdq .area { fill: #888; }
+	       #areaChartVol .nyse .area { fill: #aaa; }
+	       #areaChartVol .iex .area { fill: #ccc; }
+	</style>
+    </head>
+    <body>
+	<div>
+	    <h3>Markets volume</h3><p>Data provided for free by <a href="https://iextrading.com/developer">IEX</a></p>	    
+	</div>
+	<div>Markets Volume (Millions) <span id="trfVol" style="padding: 5px 10px; color: white; background-color: #666">TRF 0</span>
+	     <span id="nsdqVol" style="padding: 5px 10px; color: white; background-color: #888">NSDQ 0</span>
+	     <span id="nyseVol" style="padding: 5px 10px; background-color: #aaa">NYSE 0</span>
+	     <span id="iexVol" style="padding: 5px 10px; background-color: #ccc">IEX 0</span></div>
+	<div id="areaChartVol" class="epoch" style="width:700px; height:200px"></div>
+	<div><h3>FANG+IEX TOPS quotes & trades</h3><p>Real-time data provided for free by <a href="https://iextrading.com/developer">IEX</a></p>
+	    <table id="mktDataTable"><tr>
+	    <th rowspan="2">Symbol</th><th rowspan="2">Market Percent</th>
+	    <th rowspan="2">Volume</th><th colspan="2">Bid</th><th colspan="2">Ask</th>
+	    <th colspan="3">Last Sale</th><th rowspan="2">Last Updated</th>
+	</tr><tr>
+	    <th>Size</th><th>Price</th><th>Size</th><th>Price</th><th>Size</th><th>Price</th><th>Time</th>
+	</tr></table></br></div>
+
+	<div id="board"></div>
+
+	<script src="https://code.jquery.com/jquery-1.11.3.js"></script>
+	<script type="text/javascript" src="http://epochjs.github.io/epoch/js/d3.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+        <script type="text/javascript" src="http://epochjs.github.io/epoch/js/epoch.js"></script>
+	<script type="text/javascript" src="http://cdn.socket.io/socket.io-1.0.3.js"></script>
+	<script type="text/javascript">
+	    var areaChartData = [{ "label": "trf", "values": []},
+				 { "label": "nsdq", "values": []},
+				 { "label": "nyse", "values": []},
+				 { "label": "iex", "values": []}];
+
+	    var areaChartVol = $('#areaChartVol').epoch({
+		type: 'time.area', axes: ['right', 'bottom']
+		, ticks: { time: 10, right: 5, left: 5 }
+		, data: areaChartData
+	    });
+
+	    var tbl = document.getElementById("mktDataTable");
+	    var trfVol = document.getElementById("trfVol");
+	    var nsdqVol = document.getElementById("nsdqVol");
+	    var nyseVol = document.getElementById("nyseVol");
+	    var iexVol = document.getElementById("iexVol");
+
+	    var socket = io('https://ws-api.iextrading.com/1.0/tops');
+	    socket.on('message', message => {
+//		document.getElementById("board").innerHTML = message;
+		renderQuote(message);
+	    })
+
+	    socket.on('connect', () => {
+		document.getElementById("board").innerHTML = "Connected";
+		console.log('Connected.')
+		socket.emit('subscribe', 'iex,fb,amzn,nflx,googl')
+	    })
+
+	    socket.on('disconnect', () => {
+		document.getElementById("board").innerHTML = "Disconnected";
+		console.log('Disconnected.')
+	    })
+
+	    function renderQuote(message) {
+		var obj = JSON.parse(message);
+		var row = tbl.insertRow(2);
+
+		row.insertCell(-1).innerHTML=obj.symbol;
+		row.insertCell(-1).innerHTML=obj.marketPercent;
+		row.insertCell(-1).innerHTML=obj.volume;
+		row.insertCell(-1).innerHTML=obj.bidSize;
+		row.insertCell(-1).innerHTML=obj.bidPrice;
+		row.insertCell(-1).innerHTML=obj.askSize;
+		row.insertCell(-1).innerHTML=obj.askPrice;
+		row.insertCell(-1).innerHTML=obj.lastSaleSize;
+		row.insertCell(-1).innerHTML=obj.lastSalePrice;
+		row.insertCell(-1).innerHTML=new Date(obj.lastSaleTime).toISOString().substring(11, 24);
+		row.insertCell(-1).innerHTML=new Date(obj.lastUpdated).toISOString().substring(11, 24);
+		if(tbl.rows.length > 20) { tbl.deleteRow(20) };
+	    }
+
+	    function getMarketInfo() {
+		$.getJSON('https://api.iextrading.com/1.0/market', function(obj) {
+//		    console.log("Data received: " + JSON.stringify(obj));
+		    var volArray = [0,0,0,0];
+		    var arrayLength = obj.length;
+		    for (var i = 0; i < arrayLength; i++) {
+			var x = ((new Date()).getTime() / 1000)|0;
+			var y = (obj[i].volume * (0.95+Math.random()/5)).toFixed(0);
+			if (obj[i].mic === "TRF") {
+			    volArray[0] = y/1000000000;
+			    trfVol.innerHTML = "TRF " + volArray[0].toFixed(4);
+			} else if (obj[i].mic === "XNGS") {
+			    volArray[1] = y/1000000000;
+			    nsdqVol.innerHTML = "NSDQ " + volArray[1].toFixed(4);
+			} else if (obj[i].mic === "XNYS") {
+			    volArray[2] = y/1000000000;
+			    nyseVol.innerHTML = "NYSE " + volArray[2].toFixed(4);
+			} else if (obj[i].mic === "IEXG") {
+			    volArray[3] = y/1000000000;
+			    iexVol.innerHTML = "IEX " + volArray[3].toFixed(4);
+			}
+		    }
+
+		    areaChartData = [{"time": ((new Date()).getTime() / 1000)|0, "y": volArray[0]},
+				     {"time": ((new Date()).getTime() / 1000)|0, "y": volArray[1]},
+				     {"time": ((new Date()).getTime() / 1000)|0, "y": volArray[2]},
+				     {"time": ((new Date()).getTime() / 1000)|0, "y": volArray[3]}];
+
+		    areaChartVol.push(areaChartData);
+		});
+	    }
+
+	    var myVar = setInterval(getMarketInfo, 2000);
+	</script>
+    </body>
+</html>
+
