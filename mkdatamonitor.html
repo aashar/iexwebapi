@@ -100,7 +100,7 @@
 		    var arrayLength = obj.length;
 		    for (var i = 0; i < arrayLength; i++) {
 			var x = ((new Date()).getTime() / 1000)|0;
-			var y = (obj[i].volume * (0.95+Math.random()/5)).toFixed(0);
+			var y = obj[i].volume;
 			if (obj[i].mic === "TRF") {
 			    volArray[0] = y/1000000000;
 			    trfVol.innerHTML = "TRF " + volArray[0].toFixed(4);
