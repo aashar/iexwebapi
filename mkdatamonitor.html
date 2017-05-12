@@ -88,7 +88,7 @@
 		var row = tbl.insertRow(2);
 
 		row.insertCell(-1).innerHTML=obj.symbol;
-		row.insertCell(-1).innerHTML=(obj.marketPercent * 100).toFixed(3) + ' %';
+		row.insertCell(-1).innerHTML=obj.marketPercent.toFixed(3) + ' %';
 		row.insertCell(-1).innerHTML=obj.volume;
 		row.insertCell(-1).innerHTML=obj.bidSize;
 		row.insertCell(-1).innerHTML=obj.bidPrice;
