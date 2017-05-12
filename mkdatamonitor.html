@@ -8,7 +8,8 @@
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 	<style>body { padding: 0px 10px; font-family: 'Tangerine', serif }
 	       table { font-size: smaller }
-	       th, td { border-bottom: 1px solid #ddd; padding: 5px; horizontal-align: right; vertical-align: bottom }
+	       th { text-align: center; border-bottom: 1px solid #ddd; padding: 5px; vertical-align: bottom }
+	       td { text-align: right; border-bottom: 1px solid #ddd; padding: 5px; vertical-align: bottom }
 	       #areaChartVol .trf .area { fill: #666; }
 	       #areaChartVol .nsdq .area { fill: #888; }
 	       #areaChartVol .nyse .area { fill: #aaa; }
@@ -19,14 +20,15 @@
 	<div>
 	    <h3>Markets volume</h3><p>Data provided for free by <a href="https://iextrading.com/developer">IEX</a></p>	    
 	</div>
-	<div>Markets Volume (Millions) <span id="trfVol" style="padding: 5px 10px; color: white; background-color: #666">TRF 0</span>
+	<div>Markets Volume (in Millions) <span id="trfVol" style="padding: 5px 10px; color: white; background-color: #666">TRF 0</span>
 	     <span id="nsdqVol" style="padding: 5px 10px; color: white; background-color: #888">NSDQ 0</span>
 	     <span id="nyseVol" style="padding: 5px 10px; background-color: #aaa">NYSE 0</span>
 	     <span id="iexVol" style="padding: 5px 10px; background-color: #ccc">IEX 0</span></div>
-	<div id="areaChartVol" class="epoch" style="width:700px; height:200px"></div>
+	<br/><span id="chartTitle" style="text-decoration: underline">Change in Vol</span>
+	<div id="areaChartVol" class="epoch" style="width:800px; height:175px"></div>
 	<div><h3>FANG+IEX TOPS quotes & trades</h3><p>Real-time data provided for free by <a href="https://iextrading.com/developer">IEX</a></p>
 	    <table id="mktDataTable"><tr>
-	    <th rowspan="2">Symbol</th><th rowspan="2">Market Percent</th>
+	    <th rowspan="2">Symbol</th><th rowspan="2">Market %</th>
 	    <th rowspan="2">Volume</th><th colspan="2">Bid</th><th colspan="2">Ask</th>
 	    <th colspan="3">Last Sale</th><th rowspan="2">Last Updated</th>
 	</tr><tr>
@@ -41,6 +43,18 @@
         <script type="text/javascript" src="http://epochjs.github.io/epoch/js/epoch.js"></script>
 	<script type="text/javascript" src="http://cdn.socket.io/socket.io-1.0.3.js"></script>
 	<script type="text/javascript">
+		var prevVol = [0,0,0,0];
+		
+		var firstUpdate = 1;
+
+	    var tbl = document.getElementById("mktDataTable");
+	    var trfVol = document.getElementById("trfVol");
+	    var nsdqVol = document.getElementById("nsdqVol");
+	    var nyseVol = document.getElementById("nyseVol");
+	    var iexVol = document.getElementById("iexVol");
+		
+		var charRefreshPeriod = 2000;
+
 	    var areaChartData = [{ "label": "trf", "values": []},
 				 { "label": "nsdq", "values": []},
 				 { "label": "nyse", "values": []},
@@ -51,12 +65,6 @@
 		, ticks: { time: 10, right: 5, left: 5 }
 		, data: areaChartData
 	    });
-
-	    var tbl = document.getElementById("mktDataTable");
-	    var trfVol = document.getElementById("trfVol");
-	    var nsdqVol = document.getElementById("nsdqVol");
-	    var nyseVol = document.getElementById("nyseVol");
-	    var iexVol = document.getElementById("iexVol");
 
 	    var socket = io('https://ws-api.iextrading.com/1.0/tops');
 	    socket.on('message', message => {
@@ -80,7 +88,7 @@
 		var row = tbl.insertRow(2);
 
 		row.insertCell(-1).innerHTML=obj.symbol;
-		row.insertCell(-1).innerHTML=obj.marketPercent;
+		row.insertCell(-1).innerHTML=(obj.marketPercent * 100).toFixed(3) + ' %';
 		row.insertCell(-1).innerHTML=obj.volume;
 		row.insertCell(-1).innerHTML=obj.bidSize;
 		row.insertCell(-1).innerHTML=obj.bidPrice;
@@ -102,31 +110,36 @@
 			var x = ((new Date()).getTime() / 1000)|0;
 			var y = obj[i].volume;
 			if (obj[i].mic === "TRF") {
-			    volArray[0] = y/1000000000;
-			    trfVol.innerHTML = "TRF " + volArray[0].toFixed(4);
+			    volArray[0] = y;
+			    trfVol.innerHTML = "TRF " + (volArray[0].toFixed(3)/1000000).toLocaleString();
 			} else if (obj[i].mic === "XNGS") {
-			    volArray[1] = y/1000000000;
-			    nsdqVol.innerHTML = "NSDQ " + volArray[1].toFixed(4);
+			    volArray[1] = y;
+			    nsdqVol.innerHTML = "NSDQ " + (volArray[1].toFixed(3)/1000000).toLocaleString();
 			} else if (obj[i].mic === "XNYS") {
-			    volArray[2] = y/1000000000;
-			    nyseVol.innerHTML = "NYSE " + volArray[2].toFixed(4);
+			    volArray[2] = y;
+			    nyseVol.innerHTML = "NYSE " + (volArray[2].toFixed(3)/1000000).toLocaleString();
 			} else if (obj[i].mic === "IEXG") {
-			    volArray[3] = y/1000000000;
-			    iexVol.innerHTML = "IEX " + volArray[3].toFixed(4);
+			    volArray[3] = y;
+			    iexVol.innerHTML = "IEX " + (volArray[3].toFixed(3)/1000000).toLocaleString();
 			}
 		    }
 
-		    areaChartData = [{"time": ((new Date()).getTime() / 1000)|0, "y": volArray[0]},
-				     {"time": ((new Date()).getTime() / 1000)|0, "y": volArray[1]},
-				     {"time": ((new Date()).getTime() / 1000)|0, "y": volArray[2]},
-				     {"time": ((new Date()).getTime() / 1000)|0, "y": volArray[3]}];
+			if (firstUpdate != 1) {
+//				console.log ([(volArray[0] - prevVol[0]),(volArray[1] - prevVol[1]),(volArray[2] - prevVol[2]),(volArray[3] - prevVol[3])]);
+				areaChartData = [{"time": ((new Date()).getTime() / 1000)|0, "y": (volArray[0] - prevVol[0])},
+						 {"time": ((new Date()).getTime() / 1000)|0, "y": (volArray[1] - prevVol[1])},
+						 {"time": ((new Date()).getTime() / 1000)|0, "y": (volArray[2] - prevVol[2])},
+						 {"time": ((new Date()).getTime() / 1000)|0, "y": (volArray[3] - prevVol[3])}];
 
-		    areaChartVol.push(areaChartData);
+				areaChartVol.push(areaChartData);
+			}
+			else { firstUpdate = 0; }
+
+			for (var i = 0; i< volArray.length; i++) { prevVol[i] = volArray[i]; };
 		});
 	    }
 
-	    var myVar = setInterval(getMarketInfo, 2000);
+	    var myVar = setInterval(getMarketInfo, charRefreshPeriod);
 	</script>
     </body>
 </html>
-
